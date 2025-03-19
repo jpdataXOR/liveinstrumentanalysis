@@ -87,7 +87,7 @@ with col3:
 lookback_period = st.selectbox(
     "Historical Data Period:",
     ["1d", "5d", "7d", "1mo"],
-    index=1,
+    index=3,
     help="How far back to fetch historical data"
 )
 
