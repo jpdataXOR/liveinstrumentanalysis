@@ -221,9 +221,8 @@ while True:
             ))
 
             # Starting point for projections
-            projection_start_range = min(10, len(last_n_data) - 1) # Ensure we don't exceed data length
+            projection_start_range = min(10, len(last_n_data) - 1)  # Ensure we don't exceed data length
             projection_start_points = range(len(last_n_data) - projection_start_range, len(last_n_data))
-            projection_start_points = range(9, 20)
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
