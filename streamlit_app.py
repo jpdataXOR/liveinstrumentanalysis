@@ -221,24 +221,25 @@ while True:
             ))
 
             # Starting point for projections
-            projection_start_range = min(10, len(last_n_data) - 1)  # Ensure we don't exceed data length
-            projection_start_points = range(len(last_n_data) - projection_start_range, len(last_n_data))
+            # This section replaces the projection logic in the forex file (file 2)
+            # Starting point for projections (point 10 to last point)
+            projection_start_idx = max(0, len(last_n_data) - 11)  # Get the 10th from last point
+            projection_end_idx = len(last_n_data) - 1  # Last point
+            projection_start_points = range(projection_start_idx, projection_end_idx + 1)
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
 
             # Dictionary to store projection values for each future time point
+            # Structure: {time_point: {start_point_idx: [projection_values]}}
             future_projection_values = {}
-            latest_point_projection_values = {}  # Store projections from the latest point
+            latest_point_projection_values = {} # Store projections from the latest point
 
             # Track pattern matches to report on pattern quality
             pattern_matches = {}
 
             # Generate and display projections for each starting point
             for idx in projection_start_points:
-                if idx >= len(last_n_data):
-                    continue
-
                 start_point = last_n_data[idx]
                 start_idx_full = stock_data.index(start_point)
 
@@ -257,8 +258,8 @@ while True:
                         "pattern_lengths": []
                     }
 
-                # Is this the latest point?
-                is_latest_point = (idx == len(last_n_data)-1)
+                # Is this the latest point? (last point in the data)
+                is_latest_point = (idx == projection_end_idx)
 
                 # Process each projection for this point
                 for proj_idx, proj in enumerate(projections):
@@ -280,7 +281,7 @@ while True:
                         line_width = 1
 
                     # Format the projection label
-                    point_number = idx + 1
+                    point_number = idx - projection_start_idx + 10  # This makes it P10, P11, etc.
                     if proj_idx == 0:
                         label = f"Latest Projection" if is_latest_point else f"From P{point_number}"
                     else:
@@ -335,7 +336,7 @@ while True:
                     x=avg_projection_x_overall,
                     y=avg_projection_y_overall,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(100,180,255,0.8)", width=2.5),
+                    line=dict(shape="hv", dash="dot", color="rgba(100,180,255,0.8)", width=2.5), # Light blue for all projections
                     name="Average Projection (All)",
                 ))
 
@@ -354,10 +355,9 @@ while True:
                     x=avg_latest_projection_x,
                     y=avg_latest_projection_y,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(0,0,180,0.8)", width=2.5),
+                    line=dict(shape="hv", dash="dot", color="rgba(0,0,180,0.8)", width=2.5), # Darker blue for latest point
                     name="Average Projection (Latest Point)",
                 ))
-
             # Adjust y-axis range if extreme projections need to be accommodated
             if clip_projections and all_projection_values:
                 # Calculate reasonable limits for projections
