@@ -83,24 +83,13 @@ with col3:
         help="Number of prediction lines to generate from each point"
     )
 
-# Additional options for forex data
-col1, col2 = st.columns(2)
-with col1:
-    lookback_period = st.selectbox(
-        "Historical Data Period:",
-        ["1d", "5d", "7d", "1mo"],
-        index=1,
-        help="How far back to fetch historical data"
-    )
-
-with col2:
-    display_points = st.slider(
-        "Display Points",
-        min_value=10,
-        max_value=50,
-        value=20,
-        help="Number of historical data points to display on chart"
-    )
+# Additional options for forex data - just lookback period (removed display points)
+lookback_period = st.selectbox(
+    "Historical Data Period:",
+    ["1d", "5d", "7d", "1mo"],
+    index=1,
+    help="How far back to fetch historical data"
+)
 
 # Initialize session state for first run tracking
 if "is_first_run" not in st.session_state:
@@ -174,11 +163,11 @@ while True:
         fig = go.Figure()
 
         if stock_data:
-            # Get the last N data points for display
-            last_n_data = stock_data[-display_points:]
+            # Get the last 20 data points for display - HARDCODED like in BTC file
+            last_20_data = stock_data[-20:]
 
             # Determine y-axis range based on actual price data
-            prices = [item["close"] for item in last_n_data]
+            prices = [item["close"] for item in last_20_data]
             min_price = min(prices)
             max_price = max(prices)
             price_range = max_price - min_price
@@ -190,15 +179,15 @@ while True:
 
             # Add the main price line
             fig.add_trace(go.Scatter(
-                x=[convert_to_aest(item["date"]) for item in last_n_data],
-                y=[item["close"] for item in last_n_data],
+                x=[convert_to_aest(item["date"]) for item in last_20_data],
+                y=[item["close"] for item in last_20_data],
                 mode="lines",
                 line=dict(shape="hv", color="black", width=2),
                 name="Price",
             ))
 
             # Add dot and price label at the latest point
-            latest_point = last_n_data[-1]
+            latest_point = last_20_data[-1]
             latest_point_date = convert_to_aest(latest_point["date"])
             latest_point_price = latest_point["close"]
 
@@ -220,12 +209,8 @@ while True:
                 showlegend=False,
             ))
 
-            # Starting point for projections
-            # This section replaces the projection logic in the forex file (file 2)
-            # Starting point for projections (point 10 to last point)
-            projection_start_idx = max(0, len(last_n_data) - 11)  # Get the 10th from last point
-            projection_end_idx = len(last_n_data) - 1  # Last point
-            projection_start_points = range(projection_start_idx, projection_end_idx + 1)
+            # Starting point for projections (point 10 to point 20) - MATCHING BTC FILE EXACTLY
+            projection_start_points = range(9, 20)  # 0-indexed, so 9 is the 10th point from the end
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
@@ -240,7 +225,10 @@ while True:
 
             # Generate and display projections for each starting point
             for idx in projection_start_points:
-                start_point = last_n_data[idx]
+                if idx >= len(last_20_data):
+                    continue
+
+                start_point = last_20_data[idx]
                 start_idx_full = stock_data.index(start_point)
 
                 # Generate multiple projections starting from this point
@@ -258,8 +246,8 @@ while True:
                         "pattern_lengths": []
                     }
 
-                # Is this the latest point? (last point in the data)
-                is_latest_point = (idx == projection_end_idx)
+                # Is this the latest point? (p20)
+                is_latest_point = (idx == 19)
 
                 # Process each projection for this point
                 for proj_idx, proj in enumerate(projections):
@@ -281,7 +269,7 @@ while True:
                         line_width = 1
 
                     # Format the projection label
-                    point_number = idx - projection_start_idx + 10  # This makes it P10, P11, etc.
+                    point_number = idx + 1
                     if proj_idx == 0:
                         label = f"Latest Projection" if is_latest_point else f"From P{point_number}"
                     else:
@@ -336,7 +324,7 @@ while True:
                     x=avg_projection_x_overall,
                     y=avg_projection_y_overall,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(100,180,255,0.8)", width=2.5), # Light blue for all projections
+                    line=dict(shape="hv", dash="dot", color="rgba(100,180,255,0.8)", width=2.5), # Light blue
                     name="Average Projection (All)",
                 ))
 
@@ -355,9 +343,10 @@ while True:
                     x=avg_latest_projection_x,
                     y=avg_latest_projection_y,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(0,0,180,0.8)", width=2.5), # Darker blue for latest point
+                    line=dict(shape="hv", dash="dot", color="rgba(0,0,180,0.8)", width=2.5), # Darker blue
                     name="Average Projection (Latest Point)",
                 ))
+
             # Adjust y-axis range if extreme projections need to be accommodated
             if clip_projections and all_projection_values:
                 # Calculate reasonable limits for projections
