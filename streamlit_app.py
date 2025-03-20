@@ -12,7 +12,7 @@ st.set_page_config(page_title="Live Forex Prices", layout="wide")
 st.title("📈 Live Forex Prices & Future Projections")
 
 # UI Controls - Top Row
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3 = st.columns(3)
 
 with col1:
     st.markdown("**💱 Forex Pair:**")
@@ -37,59 +37,20 @@ with col3:
     st.markdown("**🕒 Chart Interval:**")
     ohlc_interval = st.radio(
         "Choose interval:",
-        ["15m", "1h", "4h"],
+        ["1m", "5m", "15m", "1h", "1d"],
         horizontal=True,
-        index=1
+        index=3
     )
 
-with col4:
-    st.markdown("**⏳ Next Refresh In:**")
-    countdown_placeholder = st.empty()
-
-# Display latest price
-latest_price_container = st.container()
-col1, col2 = latest_price_container.columns([1, 1])
-
-with col1:
-    latest_price_placeholder = st.empty()
-
-with col2:
-    latest_time_placeholder = st.empty()
-
-# Add controls for Y-axis scaling and projections
-col1, col2, col3 = st.columns(3)
-with col1:
-    y_axis_padding = st.slider(
-        "Y-Axis Padding (%)",
-        min_value=1,
-        max_value=10,
-        value=5,
-        help="Percentage padding above and below the main price range"
-    )
-
-with col2:
-    clip_projections = st.checkbox(
-        "Clip Extreme Projections",
-        value=True,
-        help="Limit projection values to a reasonable range"
-    )
-
-with col3:
-    projections_per_point = st.slider(
-        "Projections per Point",
-        min_value=1,
-        max_value=10,
-        value=3,
-        help="Number of prediction lines to generate from each point"
-    )
-
-# Additional options for forex data - just lookback period (removed display points)
-lookback_period = st.selectbox(
-    "Historical Data Period:",
-    ["1d", "5d", "7d", "1mo"],
-    index=3,
-    help="How far back to fetch historical data"
-)
+# Auto-map data period based on interval
+intervals = {
+    "1m": "7d",    # 1-minute data (7 days)
+    "5m": "60d",   # 5-minute data (60 days)
+    "15m": "60d",  # 15-minute data (60 days)
+    "1h": "2y",    # 1-hour data (2 years)
+    "1d": "20y"    # 1-day data (20 years, adjust as needed)
+}
+lookback_period = intervals[ohlc_interval]
 
 # Add debug container
 debug_container = st.container()
@@ -150,20 +111,6 @@ while True:
         - Interval: **{ohlc_interval}**
         """
 
-    # Display latest price with appropriate formatting based on forex pair
-    with latest_price_placeholder:
-        # Format price based on currency pair (most forex have 4-5 decimal places)
-        if "JPY" in forex_pair:
-            price_format = f"{latest_price:.3f}"  # JPY pairs typically have 3 decimal places
-        else:
-            price_format = f"{latest_price:.5f}"  # Other pairs typically have 5 decimal places
-            
-        pair_display = forex_pair.replace("=X", "")
-        st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
-
-    with latest_time_placeholder:
-        st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
-
     # Create chart
     with placeholder_chart.container():
         fig = go.Figure()
@@ -173,7 +120,7 @@ while True:
             last_20_data = stock_data[-20:]
             
             # DEBUG: Print length of last_20_data
-            st.write(f"DEBUG: length of last_20_data = {len(last_20_data)}")
+            # st.write(f"DEBUG: length of last_20_data = {len(last_20_data)}")
 
             # Determine y-axis range based on actual price data
             prices = [item["close"] for item in last_20_data]
@@ -222,7 +169,7 @@ while True:
             projection_start_points = range(9, 20)  # 9 is the 10th point from the end (0-indexed)
             
             # DEBUG: Print the projection_start_points
-            st.write(f"DEBUG: projection_start_points = {list(projection_start_points)}")
+            # st.write(f"DEBUG: projection_start_points = {list(projection_start_points)}")
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
@@ -470,6 +417,41 @@ while True:
                 - Using **{len(stock_data)}** historical data points for pattern matching
                 """
                 st.markdown(pattern_info)
+
+    # Display latest price and clock at the bottom
+    with latest_price_container:
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
+
+    # Add controls for Y-axis scaling and projections at the bottom
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        y_axis_padding = st.slider(
+            "Y-Axis Padding (%)",
+            min_value=1,
+            max_value=10,
+            value=5,
+            help="Percentage padding above and below the main price range"
+        )
+
+    with col2:
+        clip_projections = st.checkbox(
+            "Clip Extreme Projections",
+            value=True,
+            help="Limit projection values to a reasonable range"
+        )
+
+    with col3:
+        projections_per_point = st.slider(
+            "Projections per Point",
+            min_value=1,
+            max_value=10,
+            value=3,
+            help="Number of prediction lines to generate from each point"
+        )
 
     # Update countdown timer
     for remaining in range(refresh_rate, 0, -1):
