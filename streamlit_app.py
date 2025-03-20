@@ -383,7 +383,7 @@ while True:
             showlegend=True
         )
 
-        st.plotly_chart(fig, use_container_width=True, key="unique_chart_key")
+        st.plotly_chart(fig, use_container_width=True, key=f"unique_chart_key_{time.time()}")
 
     # Move the debug information to the bottom of the chart
     # Display projection debug information - REMOVED
