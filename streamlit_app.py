@@ -163,7 +163,7 @@ while True:
         fig = go.Figure()
 
         if stock_data:
-            # Get the last 20 data points for display - HARDCODED like in BTC file
+            # Get the last 20 data points for display
             last_20_data = stock_data[-20:]
 
             # Determine y-axis range based on actual price data
@@ -209,28 +209,32 @@ while True:
                 showlegend=False,
             ))
 
-            # Starting point for projections (point 10 to point 20) - MATCHING BTC FILE EXACTLY
-            projection_start_points = range(9, 20)  # 0-indexed, so 9 is the 10th point from the end
+            # Starting point for projections (point 10 to point 20) - 0-indexed
+            # This is the simplified approach from paste-2.txt
+            projection_start_points = range(9, 20)  # 9 is the 10th point from the end (0-indexed)
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
 
             # Dictionary to store projection values for each future time point
-            # Structure: {time_point: {start_point_idx: [projection_values]}}
             future_projection_values = {}
-            latest_point_projection_values = {} # Store projections from the latest point
+            latest_point_projection_values = {}  # Store projections from the latest point
 
             # Track pattern matches to report on pattern quality
             pattern_matches = {}
 
             # Generate and display projections for each starting point
             for idx in projection_start_points:
+                # Skip if outside the range of our displayed data
                 if idx >= len(last_20_data):
                     continue
-
+                    
+                # Get the point from last_20_data
                 start_point = last_20_data[idx]
+                
+                # Find the corresponding index in the full stock_data
                 start_idx_full = stock_data.index(start_point)
-
+                
                 # Generate multiple projections starting from this point
                 projections = generate_future_projections_from_point(
                     stock_data, 
@@ -247,7 +251,7 @@ while True:
                     }
 
                 # Is this the latest point? (p20)
-                is_latest_point = (idx == 19)
+                is_latest_point = (idx == 19) or (idx == len(last_20_data) - 1)
 
                 # Process each projection for this point
                 for proj_idx, proj in enumerate(projections):
