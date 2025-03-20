@@ -6,6 +6,11 @@ import streamlit.components.v1 as components
 from data_utils import get_forex_data, convert_to_aest, generate_future_projections_from_point
 from datetime import datetime
 import numpy as np
+import uuid
+
+# Function to generate a unique key
+def generate_unique_key(prefix):
+    return f"{prefix}_{uuid.uuid4()}"
 
 # Streamlit UI
 st.set_page_config(page_title="Live Forex Prices", layout="wide")
@@ -75,11 +80,44 @@ placeholder_data_info = st.empty()
 latest_price_container = st.empty()  # Initialize latest_price_container
 
 # Define y_axis_padding and projections_per_point with default values
-y_axis_padding = 5  # Default value in percentage
-projections_per_point = 3  # Default number of projections per point
+if "y_axis_padding" not in st.session_state:
+    st.session_state.y_axis_padding = 5  # Default value in percentage
+
+if "projections_per_point" not in st.session_state:
+    st.session_state.projections_per_point = 5  # Default number of projections per point
+
+if "clip_projections" not in st.session_state:
+    st.session_state.clip_projections = True
 
 # Initialize price_format with a default value
 price_format = "N/A"
+
+# Sidebar controls for Y-axis scaling and projections
+with st.sidebar:
+    st.session_state.y_axis_padding = st.slider(
+        "Y-Axis Padding (%)",
+        min_value=1,
+        max_value=10,
+        value=st.session_state.y_axis_padding,
+        help="Percentage padding above and below the main price range",
+        key="y_axis_padding_slider"
+    )
+
+    st.session_state.clip_projections = st.checkbox(
+        "Clip Extreme Projections",
+        value=st.session_state.clip_projections,
+        help="Limit projection values to a reasonable range",
+        key="clip_projections_checkbox"
+    )
+
+    st.session_state.projections_per_point = st.slider(
+        "Projections per Point",
+        min_value=1,
+        max_value=10,
+        value=st.session_state.projections_per_point,
+        help="Number of prediction lines to generate from each point",
+        key="projections_per_point_slider"
+    )
 
 # Function to calculate remaining seconds until refresh
 def calculate_seconds_until_refresh(refresh_rate):
@@ -148,7 +186,7 @@ while True:
             price_range = max_price - min_price
 
             # Calculate y-axis limits with padding
-            padding = price_range * (y_axis_padding / 100)
+            padding = price_range * (st.session_state.y_axis_padding / 100)
             y_min = max(0, min_price - padding)  # Ensure we don't go below zero
             y_max = max_price + padding
 
@@ -217,7 +255,7 @@ while True:
                     stock_data,
                     start_idx_full,
                     future_points=10,
-                    num_lines=projections_per_point
+                    num_lines=st.session_state.projections_per_point
                 )
 
                 # Store pattern match information for reporting
@@ -259,7 +297,7 @@ while True:
                     # Process projection data
                     projection_data = proj["data"].copy()
 
-                    if clip_projections:
+                    if st.session_state.clip_projections:
                         # Collect all values for checking extremes
                         for point in projection_data:
                             all_projection_values.append(point["close"])
@@ -359,10 +397,10 @@ while True:
     # Show debug message
     with placeholder_debug.container():
         st.markdown(debug_message)
-        if clip_projections and 'all_projection_values' in locals() and all_projection_values and stock_data:
-            total_projections = len(projection_start_points) * projections_per_point
+        if st.session_state.clip_projections and 'all_projection_values' in locals() and all_projection_values and stock_data:
+            total_projections = len(projection_start_points) * st.session_state.projections_per_point
 
-            st.markdown(f"Generating {projections_per_point} projections per point × {len(projection_start_points)} points = {total_projections} total projections")
+            st.markdown(f"Generating {st.session_state.projections_per_point} projections per point × {len(projection_start_points)} points = {total_projections} total projections")
 
             # Display pattern match information if available
             if pattern_matches:
@@ -385,36 +423,6 @@ while True:
             st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
         with col2_bottom:
             st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
-
-    # Add controls for Y-axis scaling and projections at the bottom
-    col1_controls, col2_controls, col3_controls = st.columns(3)
-    with col1_controls:
-        y_axis_padding = st.slider(
-            "Y-Axis Padding (%)",
-            min_value=1,
-            max_value=10,
-            value=5,
-            help="Percentage padding above and below the main price range",
-            key="y_axis_padding_slider"
-        )
-
-    with col2_controls:
-        clip_projections = st.checkbox(
-            "Clip Extreme Projections",
-            value=True,
-            help="Limit projection values to a reasonable range",
-            key="clip_projections_checkbox"
-        )
-
-    with col3_controls:
-        projections_per_point = st.slider(
-            "Projections per Point",
-            min_value=1,
-            max_value=10,
-            value=3,
-            help="Number of prediction lines to generate from each point",
-            key="projections_per_point_slider"
-        )
 
     # Update countdown timer
     for remaining in range(refresh_rate, 0, -1):
