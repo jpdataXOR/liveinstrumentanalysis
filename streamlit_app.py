@@ -120,6 +120,10 @@ latest_price_container = st.empty()  # Initialize latest_price_container
 # Initialize price_format with a default value
 price_format = "N/A"
 
+# Placeholders for latest price and time
+price_placeholder = col5.empty()
+time_placeholder = col6.empty()
+
 # Function to calculate remaining seconds until refresh
 def calculate_seconds_until_refresh(refresh_rate):
     current_time = time.time()
@@ -417,11 +421,9 @@ while True:
                 """
                 st.markdown(pattern_info)
 
-    # Display latest price and clock at the top
-    with col5:
-        st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
-    with col6:
-        st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
+    # Update latest price and time
+    price_placeholder.markdown(f"<h4 style='text-align: center; color: green;'>{pair_display}: {price_format}</h4>", unsafe_allow_html=True)
+    time_placeholder.markdown(f"<h5 style='text-align: center;'>🕒 {latest_time} AEST</h5>", unsafe_allow_html=True)
 
     # Update countdown timer
     for remaining in range(refresh_rate, 0, -1):
