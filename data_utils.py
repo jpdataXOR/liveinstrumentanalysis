@@ -138,7 +138,7 @@ def generate_future_projections_from_point(stock_data, start_idx, future_points=
         for i in range(future_points):
             pattern_idx = key + pattern_length + i
             if pattern_idx + 1 < len(stock_data):
-                price_change = (stock_data[pattern_idx]["close"] - stock_data[pattern_idx+1]["close"]) / stock_data[pattern_idx+1]["close"]
+                price_change = (stock_data[pattern_idx+1]["close"] - stock_data[pattern_idx]["close"]) / stock_data[pattern_idx]["close"]
                 future_prices.append(future_prices[-1] * (1 + price_change))
                 
                 # Calculate future dates based on the interval between data points
@@ -147,7 +147,7 @@ def generate_future_projections_from_point(stock_data, start_idx, future_points=
                     if len(stock_data) > 1:
                         curr_date = datetime.strptime(stock_data[0]["date"], "%d-%b-%Y %H:%M")
                         next_date = datetime.strptime(stock_data[1]["date"], "%d-%b-%Y %H:%M")
-                        delta = curr_date - next_date  # Reverse the order as stock_data is reversed
+                        delta = next_date - curr_date  # Correct the order
                         future_dates.append(future_dates[-1] + delta)
                     else:
                         # Default to 1 hour if we can't determine

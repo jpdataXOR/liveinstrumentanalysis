@@ -91,6 +91,12 @@ lookback_period = st.selectbox(
     help="How far back to fetch historical data"
 )
 
+# Add debug container
+debug_container = st.container()
+with debug_container:
+    st.markdown("### 🐛 Projection Debug Information")
+    projection_debug_placeholder = st.empty()
+
 # Initialize session state for first run tracking
 if "is_first_run" not in st.session_state:
     st.session_state.is_first_run = True
@@ -165,6 +171,9 @@ while True:
         if stock_data:
             # Get the last 20 data points for display
             last_20_data = stock_data[-20:]
+            
+            # DEBUG: Print length of last_20_data
+            st.write(f"DEBUG: length of last_20_data = {len(last_20_data)}")
 
             # Determine y-axis range based on actual price data
             prices = [item["close"] for item in last_20_data]
@@ -210,8 +219,10 @@ while True:
             ))
 
             # Starting point for projections (point 10 to point 20) - 0-indexed
-            # This is the simplified approach from paste-2.txt
             projection_start_points = range(9, 20)  # 9 is the 10th point from the end (0-indexed)
+            
+            # DEBUG: Print the projection_start_points
+            st.write(f"DEBUG: projection_start_points = {list(projection_start_points)}")
 
             # Store all projection points to analyze extreme values
             all_projection_values = []
@@ -222,18 +233,31 @@ while True:
 
             # Track pattern matches to report on pattern quality
             pattern_matches = {}
+            
+            # Collection of debugging info
+            projection_debug_info = []
 
             # Generate and display projections for each starting point
             for idx in projection_start_points:
                 # Skip if outside the range of our displayed data
                 if idx >= len(last_20_data):
+                    projection_debug_info.append(f"⚠️ Skip idx={idx}: Outside the range of displayed data (len={len(last_20_data)})")
                     continue
                     
                 # Get the point from last_20_data
                 start_point = last_20_data[idx]
                 
+                # DEBUG: Get the start point details
+                start_point_date = convert_to_aest(start_point["date"])
+                start_point_price = start_point["close"]
+                
                 # Find the corresponding index in the full stock_data
-                start_idx_full = stock_data.index(start_point)
+                try:
+                    start_idx_full = stock_data.index(start_point)
+                    projection_debug_info.append(f"✅ Point {idx+1}: Found at position {start_idx_full} in full data, date={start_point_date}, price={start_point_price:.5f}")
+                except ValueError:
+                    projection_debug_info.append(f"❌ Point {idx+1}: Not found in full data! Date={start_point_date}, price={start_point_price:.5f}")
+                    continue
                 
                 # Generate multiple projections starting from this point
                 projections = generate_future_projections_from_point(
@@ -242,6 +266,12 @@ while True:
                     future_points=10, 
                     num_lines=projections_per_point
                 )
+                
+                # DEBUG: Check if projections were generated
+                if projections:
+                    projection_debug_info.append(f"  ➤ Generated {len(projections)} projections from point {idx+1}")
+                else:
+                    projection_debug_info.append(f"  ➤ No projections generated for point {idx+1}!")
 
                 # Store pattern match information for reporting
                 if projections:
@@ -252,12 +282,17 @@ while True:
 
                 # Is this the latest point? (p20)
                 is_latest_point = (idx == 19) or (idx == len(last_20_data) - 1)
+                
+                # DEBUG: Is this the latest point?
+                if is_latest_point:
+                    projection_debug_info.append(f"  ⭐ Point {idx+1} is the latest point")
 
                 # Process each projection for this point
                 for proj_idx, proj in enumerate(projections):
                     # Capture pattern length if available
                     if "pattern_length" in proj:
                         pattern_matches[idx]["pattern_lengths"].append(proj["pattern_length"])
+                        projection_debug_info.append(f"    ♦ Projection {proj_idx+1} pattern length: {proj['pattern_length']}")
 
                     # Use red for latest point projections, gray for others
                     # Vary opacity for multiple lines from the same point
@@ -281,6 +316,14 @@ while True:
 
                     # Process projection data
                     projection_data = proj["data"].copy()
+                    
+                    # DEBUG: Check projection data
+                    if projection_data:
+                        first_proj = projection_data[0]
+                        last_proj = projection_data[-1]
+                        projection_debug_info.append(f"    ↳ Projection {proj_idx+1} from {convert_to_aest(first_proj['date'])} to {convert_to_aest(last_proj['date'])}")
+                        projection_debug_info.append(f"    ↳ Projection data: {[convert_to_aest(point['date']) for point in projection_data]}")
+
                     if clip_projections:
                         # Collect all values for checking extremes
                         for point in projection_data:
@@ -371,7 +414,8 @@ while True:
             fig.update_layout(
                 yaxis=dict(
                     range=[y_min, y_max],
-                )
+                ),
+                margin=dict(t=10)  # Reduce top margin
             )
 
         pair_display = forex_pair.replace("=X", "")
@@ -382,7 +426,17 @@ while True:
             showlegend=True
         )
 
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key="unique_chart_key")
+
+    # Move the debug information to the bottom of the chart
+    # Display projection debug information
+    with projection_debug_placeholder:
+        if projection_debug_info:
+            st.markdown("#### Projection Debug Log:")
+            for info in projection_debug_info:
+                st.markdown(f"- {info}")
+        else:
+            st.markdown("No projection debug information available.")
 
     # Show data info message
     with placeholder_data_info:
