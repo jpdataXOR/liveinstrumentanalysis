@@ -13,11 +13,49 @@ def generate_unique_key(prefix):
     return f"{prefix}_{uuid.uuid4()}"
 
 # Streamlit UI
-st.set_page_config(page_title="Live Forex Prices", layout="wide")
+st.set_page_config(page_title="Live Forex Prices", layout="wide", initial_sidebar_state="collapsed")
 st.title("📈 Live Forex Prices & Future Projections")
 
+# Initialize session state variables
+if "y_axis_padding" not in st.session_state:
+    st.session_state.y_axis_padding = 5  # Default value in percentage
+
+if "projections_per_point" not in st.session_state:
+    st.session_state.projections_per_point = 5  # Default number of projections per point
+
+if "clip_projections" not in st.session_state:
+    st.session_state.clip_projections = True
+
+# Sidebar controls for Y-axis scaling and projections
+with st.sidebar:
+    st.markdown("### ⚙️ Settings")
+    st.session_state.y_axis_padding = st.slider(
+        "Y-Axis Padding (%)",
+        min_value=1,
+        max_value=10,
+        value=st.session_state.y_axis_padding,
+        help="Percentage padding above and below the main price range",
+        key="y_axis_padding_slider"
+    )
+
+    st.session_state.clip_projections = st.checkbox(
+        "Clip Extreme Projections",
+        value=st.session_state.clip_projections,
+        help="Limit projection values to a reasonable range",
+        key="clip_projections_checkbox"
+    )
+
+    st.session_state.projections_per_point = st.slider(
+        "Projections per Point",
+        min_value=1,
+        max_value=10,
+        value=st.session_state.projections_per_point,
+        help="Number of prediction lines to generate from each point",
+        key="projections_per_point_slider"
+    )
+
 # UI Controls - Top Row
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5, col6 = st.columns(6)
 
 # Initialize countdown placeholder in the new column
 with col4:
@@ -79,45 +117,8 @@ placeholder_debug = st.empty()
 placeholder_data_info = st.empty()
 latest_price_container = st.empty()  # Initialize latest_price_container
 
-# Define y_axis_padding and projections_per_point with default values
-if "y_axis_padding" not in st.session_state:
-    st.session_state.y_axis_padding = 5  # Default value in percentage
-
-if "projections_per_point" not in st.session_state:
-    st.session_state.projections_per_point = 5  # Default number of projections per point
-
-if "clip_projections" not in st.session_state:
-    st.session_state.clip_projections = True
-
 # Initialize price_format with a default value
 price_format = "N/A"
-
-# Sidebar controls for Y-axis scaling and projections
-with st.sidebar:
-    st.session_state.y_axis_padding = st.slider(
-        "Y-Axis Padding (%)",
-        min_value=1,
-        max_value=10,
-        value=st.session_state.y_axis_padding,
-        help="Percentage padding above and below the main price range",
-        key="y_axis_padding_slider"
-    )
-
-    st.session_state.clip_projections = st.checkbox(
-        "Clip Extreme Projections",
-        value=st.session_state.clip_projections,
-        help="Limit projection values to a reasonable range",
-        key="clip_projections_checkbox"
-    )
-
-    st.session_state.projections_per_point = st.slider(
-        "Projections per Point",
-        min_value=1,
-        max_value=10,
-        value=st.session_state.projections_per_point,
-        help="Number of prediction lines to generate from each point",
-        key="projections_per_point_slider"
-    )
 
 # Function to calculate remaining seconds until refresh
 def calculate_seconds_until_refresh(refresh_rate):
@@ -416,13 +417,11 @@ while True:
                 """
                 st.markdown(pattern_info)
 
-    # Display latest price and clock at the bottom
-    with latest_price_container:
-        col1_bottom, col2_bottom = st.columns([1, 1])
-        with col1_bottom:
-            st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
-        with col2_bottom:
-            st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
+    # Display latest price and clock at the top
+    with col5:
+        st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
+    with col6:
+        st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
 
     # Update countdown timer
     for remaining in range(refresh_rate, 0, -1):
