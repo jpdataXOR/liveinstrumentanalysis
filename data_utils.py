@@ -10,7 +10,7 @@ def get_forex_data(pair="AUDUSD=X", interval="1h", period="5d"):
     
     Args:
         pair (str): Forex pair symbol (e.g., 'AUDUSD=X')
-        interval (str): Time interval between data points ('15m', '1h', '4h')
+        interval (str): Time interval between data points ('1m', '5m', '15m', '1h', '4h', '1d')
         period (str): How far back to get data ('5d', '7d', etc.)
     
     Returns:
@@ -18,9 +18,12 @@ def get_forex_data(pair="AUDUSD=X", interval="1h", period="5d"):
     """
     # Map our intervals to yfinance format
     interval_map = {
+        "1m": "1m",
+        "5m": "5m",
         "15m": "15m",
         "1h": "60m",
-        "4h": "4h"
+        "4h": "4h",
+        "1d": "1d"
     }
     
     try:
@@ -40,7 +43,7 @@ def get_forex_data(pair="AUDUSD=X", interval="1h", period="5d"):
         # Convert to our format
         stock_data = [{
             "date": index.strftime("%d-%b-%Y %H:%M"),
-            "close": float(row["Close"])
+            "close": float(row["Close"].iloc[0])
         } for index, row in data.iterrows()]
         
         return stock_data

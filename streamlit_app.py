@@ -53,15 +53,9 @@ intervals = {
     "5m": "60d",    # 5-minute data (60 days)
     "15m": "60d",   # 15-minute data (60 days)
     "1h": "2y",     # 1-hour data (2 years)
-    "1d": "20y"     # 1-day data (20 years, adjust as needed)
+    "1d": "2y"     # 1-day data (20 years, adjust as needed)
 }
 lookback_period = intervals[ohlc_interval]
-
-# # Add debug container - REMOVED
-# debug_container = st.container()
-# with debug_container:
-#     st.markdown("### 🐛 Projection Debug Information")
-#     projection_debug_placeholder = st.empty()
 
 # Initialize session state for first run tracking
 if "is_first_run" not in st.session_state:
@@ -79,7 +73,6 @@ placeholder_chart = st.empty()
 placeholder_debug = st.empty()
 placeholder_data_info = st.empty()
 latest_price_container = st.empty()  # Initialize latest_price_container
-# countdown_placeholder = st.empty()  # Initialized in the top row
 
 # Define y_axis_padding and projections_per_point with default values
 y_axis_padding = 5  # Default value in percentage
@@ -88,20 +81,11 @@ projections_per_point = 3  # Default number of projections per point
 # Initialize price_format with a default value
 price_format = "N/A"
 
-# Function to calculate remaining seconds until next refresh
+# Function to calculate remaining seconds until refresh
 def calculate_seconds_until_refresh(refresh_rate):
     current_time = time.time()
     next_refresh_time = (current_time // refresh_rate + 1) * refresh_rate
     return int(next_refresh_time - current_time)
-
-# Initialize all_projection_values as an empty list
-all_projection_values = []
-
-# Initialize future_projection_values as an empty dictionary
-future_projection_values = {}
-
-# Initialize latest_point_projection_values as an empty dictionary
-latest_point_projection_values = {}
 
 # Main loop
 while True:
@@ -157,9 +141,6 @@ while True:
             # Get the last 20 data points for display
             last_20_data = stock_data[-20:]
 
-            # DEBUG: Print length of last_20_data
-            # st.write(f"DEBUG: length of last_20_data = {len(last_20_data)}")
-
             # Determine y-axis range based on actual price data
             prices = [item["close"] for item in last_20_data]
             min_price = min(prices)
@@ -205,9 +186,6 @@ while True:
 
             # Starting point for projections (point 10 to point 20) - 0-indexed
             projection_start_points = range(9, 20)  # 9 is the 10th point from the end (0-indexed)
-
-            # DEBUG: Print the projection_start_points
-            # st.write(f"DEBUG: projection_start_points = {list(projection_start_points)}")
 
             # Store all projection values to analyze extreme values
             all_projection_values = []
@@ -351,22 +329,6 @@ while True:
                     name="Average Projection (Latest Point)",
                 ))
 
-            # Adjust y-axis range if extreme projections need to be accommodated
-            if clip_projections and all_projection_values:
-                # Calculate reasonable limits for projections
-                # Allow projections to extend the range by 50% at most
-                projection_min = min(all_projection_values)
-                projection_max = max(all_projection_values)
-
-                # Only expand the range if projections are within a reasonable distance
-                max_expansion = price_range * 0.5
-
-                if projection_min < y_min and projection_min > y_min - max_expansion:
-                    y_min = projection_min
-
-                if projection_max > y_max and projection_max < y_max + max_expansion:
-                    y_max = projection_max
-
             # Set the y-axis range
             fig.update_layout(
                 yaxis=dict(
@@ -400,14 +362,7 @@ while True:
         if clip_projections and 'all_projection_values' in locals() and all_projection_values and stock_data:
             total_projections = len(projection_start_points) * projections_per_point
 
-            if "JPY" in forex_pair:
-                y_min_format = f"{y_min:.3f}"
-                y_max_format = f"{y_max:.3f}"
-            else:
-                y_min_format = f"{y_min:.5f}"
-                y_max_format = f"{y_max:.5f}"
-
-            st.markdown(f"Y-axis range: {y_min_format} - {y_max_format} | Generating {projections_per_point} projections per point × {len(projection_start_points)} points = {total_projections} total projections")
+            st.markdown(f"Generating {projections_per_point} projections per point × {len(projection_start_points)} points = {total_projections} total projections")
 
             # Display pattern match information if available
             if pattern_matches:
@@ -439,14 +394,16 @@ while True:
             min_value=1,
             max_value=10,
             value=5,
-            help="Percentage padding above and below the main price range"
+            help="Percentage padding above and below the main price range",
+            key="y_axis_padding_slider"
         )
 
     with col2_controls:
         clip_projections = st.checkbox(
             "Clip Extreme Projections",
             value=True,
-            help="Limit projection values to a reasonable range"
+            help="Limit projection values to a reasonable range",
+            key="clip_projections_checkbox"
         )
 
     with col3_controls:
@@ -455,7 +412,8 @@ while True:
             min_value=1,
             max_value=10,
             value=3,
-            help="Number of prediction lines to generate from each point"
+            help="Number of prediction lines to generate from each point",
+            key="projections_per_point_slider"
         )
 
     # Update countdown timer
