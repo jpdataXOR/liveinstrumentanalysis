@@ -12,7 +12,12 @@ st.set_page_config(page_title="Live Forex Prices", layout="wide")
 st.title("📈 Live Forex Prices & Future Projections")
 
 # UI Controls - Top Row
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
+
+# Initialize countdown placeholder in the new column
+with col4:
+    st.markdown("**⏱️ Next Refresh:**")
+    countdown_placeholder = st.empty()
 
 with col1:
     st.markdown("**💱 Forex Pair:**")
@@ -44,19 +49,19 @@ with col3:
 
 # Auto-map data period based on interval
 intervals = {
-    "1m": "7d",    # 1-minute data (7 days)
-    "5m": "60d",   # 5-minute data (60 days)
-    "15m": "60d",  # 15-minute data (60 days)
-    "1h": "2y",    # 1-hour data (2 years)
-    "1d": "20y"    # 1-day data (20 years, adjust as needed)
+    "1m": "7d",     # 1-minute data (7 days)
+    "5m": "60d",    # 5-minute data (60 days)
+    "15m": "60d",   # 15-minute data (60 days)
+    "1h": "2y",     # 1-hour data (2 years)
+    "1d": "20y"     # 1-day data (20 years, adjust as needed)
 }
 lookback_period = intervals[ohlc_interval]
 
-# Add debug container
-debug_container = st.container()
-with debug_container:
-    st.markdown("### 🐛 Projection Debug Information")
-    projection_debug_placeholder = st.empty()
+# # Add debug container - REMOVED
+# debug_container = st.container()
+# with debug_container:
+#     st.markdown("### 🐛 Projection Debug Information")
+#     projection_debug_placeholder = st.empty()
 
 # Initialize session state for first run tracking
 if "is_first_run" not in st.session_state:
@@ -66,10 +71,37 @@ if "is_first_run" not in st.session_state:
 if "price_history" not in st.session_state:
     st.session_state.price_history = pd.DataFrame(columns=["date", "close"])
 
+# Initialize clip_projections with a default value
+clip_projections = True
+
 # Chart & Debug placeholders
 placeholder_chart = st.empty()
 placeholder_debug = st.empty()
 placeholder_data_info = st.empty()
+latest_price_container = st.empty()  # Initialize latest_price_container
+# countdown_placeholder = st.empty()  # Initialized in the top row
+
+# Define y_axis_padding and projections_per_point with default values
+y_axis_padding = 5  # Default value in percentage
+projections_per_point = 3  # Default number of projections per point
+
+# Initialize price_format with a default value
+price_format = "N/A"
+
+# Function to calculate remaining seconds until next refresh
+def calculate_seconds_until_refresh(refresh_rate):
+    current_time = time.time()
+    next_refresh_time = (current_time // refresh_rate + 1) * refresh_rate
+    return int(next_refresh_time - current_time)
+
+# Initialize all_projection_values as an empty list
+all_projection_values = []
+
+# Initialize future_projection_values as an empty dictionary
+future_projection_values = {}
+
+# Initialize latest_point_projection_values as an empty dictionary
+latest_point_projection_values = {}
 
 # Main loop
 while True:
@@ -101,6 +133,12 @@ while True:
         latest_time = convert_to_aest(latest_row["date"])
         debug_message = f"📌 **Debug:** Latest Data → {latest_row}"
 
+        # Format price label based on currency pair
+        if "JPY" in forex_pair:
+            price_format = f"{latest_price:.3f}"
+        else:
+            price_format = f"{latest_price:.5f}"
+
         # Create data info message
         data_info_message = f"""
         📊 **Historical Data Summary:**
@@ -118,7 +156,7 @@ while True:
         if stock_data:
             # Get the last 20 data points for display
             last_20_data = stock_data[-20:]
-            
+
             # DEBUG: Print length of last_20_data
             # st.write(f"DEBUG: length of last_20_data = {len(last_20_data)}")
 
@@ -167,11 +205,11 @@ while True:
 
             # Starting point for projections (point 10 to point 20) - 0-indexed
             projection_start_points = range(9, 20)  # 9 is the 10th point from the end (0-indexed)
-            
+
             # DEBUG: Print the projection_start_points
             # st.write(f"DEBUG: projection_start_points = {list(projection_start_points)}")
 
-            # Store all projection points to analyze extreme values
+            # Store all projection values to analyze extreme values
             all_projection_values = []
 
             # Dictionary to store projection values for each future time point
@@ -180,45 +218,29 @@ while True:
 
             # Track pattern matches to report on pattern quality
             pattern_matches = {}
-            
-            # Collection of debugging info
-            projection_debug_info = []
 
             # Generate and display projections for each starting point
             for idx in projection_start_points:
                 # Skip if outside the range of our displayed data
                 if idx >= len(last_20_data):
-                    projection_debug_info.append(f"⚠️ Skip idx={idx}: Outside the range of displayed data (len={len(last_20_data)})")
                     continue
-                    
+
                 # Get the point from last_20_data
                 start_point = last_20_data[idx]
-                
-                # DEBUG: Get the start point details
-                start_point_date = convert_to_aest(start_point["date"])
-                start_point_price = start_point["close"]
-                
+
                 # Find the corresponding index in the full stock_data
                 try:
                     start_idx_full = stock_data.index(start_point)
-                    projection_debug_info.append(f"✅ Point {idx+1}: Found at position {start_idx_full} in full data, date={start_point_date}, price={start_point_price:.5f}")
                 except ValueError:
-                    projection_debug_info.append(f"❌ Point {idx+1}: Not found in full data! Date={start_point_date}, price={start_point_price:.5f}")
                     continue
-                
+
                 # Generate multiple projections starting from this point
                 projections = generate_future_projections_from_point(
-                    stock_data, 
-                    start_idx_full, 
-                    future_points=10, 
+                    stock_data,
+                    start_idx_full,
+                    future_points=10,
                     num_lines=projections_per_point
                 )
-                
-                # DEBUG: Check if projections were generated
-                if projections:
-                    projection_debug_info.append(f"  ➤ Generated {len(projections)} projections from point {idx+1}")
-                else:
-                    projection_debug_info.append(f"  ➤ No projections generated for point {idx+1}!")
 
                 # Store pattern match information for reporting
                 if projections:
@@ -229,17 +251,12 @@ while True:
 
                 # Is this the latest point? (p20)
                 is_latest_point = (idx == 19) or (idx == len(last_20_data) - 1)
-                
-                # DEBUG: Is this the latest point?
-                if is_latest_point:
-                    projection_debug_info.append(f"  ⭐ Point {idx+1} is the latest point")
 
                 # Process each projection for this point
                 for proj_idx, proj in enumerate(projections):
                     # Capture pattern length if available
                     if "pattern_length" in proj:
                         pattern_matches[idx]["pattern_lengths"].append(proj["pattern_length"])
-                        projection_debug_info.append(f"    ♦ Projection {proj_idx+1} pattern length: {proj['pattern_length']}")
 
                     # Use red for latest point projections, gray for others
                     # Vary opacity for multiple lines from the same point
@@ -263,13 +280,6 @@ while True:
 
                     # Process projection data
                     projection_data = proj["data"].copy()
-                    
-                    # DEBUG: Check projection data
-                    if projection_data:
-                        first_proj = projection_data[0]
-                        last_proj = projection_data[-1]
-                        projection_debug_info.append(f"    ↳ Projection {proj_idx+1} from {convert_to_aest(first_proj['date'])} to {convert_to_aest(last_proj['date'])}")
-                        projection_debug_info.append(f"    ↳ Projection data: {[convert_to_aest(point['date']) for point in projection_data]}")
 
                     if clip_projections:
                         # Collect all values for checking extremes
@@ -376,14 +386,9 @@ while True:
         st.plotly_chart(fig, use_container_width=True, key="unique_chart_key")
 
     # Move the debug information to the bottom of the chart
-    # Display projection debug information
-    with projection_debug_placeholder:
-        if projection_debug_info:
-            st.markdown("#### Projection Debug Log:")
-            for info in projection_debug_info:
-                st.markdown(f"- {info}")
-        else:
-            st.markdown("No projection debug information available.")
+    # Display projection debug information - REMOVED
+    # with projection_debug_placeholder:
+    #     pass
 
     # Show data info message
     with placeholder_data_info:
@@ -394,14 +399,14 @@ while True:
         st.markdown(debug_message)
         if clip_projections and 'all_projection_values' in locals() and all_projection_values and stock_data:
             total_projections = len(projection_start_points) * projections_per_point
-            
+
             if "JPY" in forex_pair:
                 y_min_format = f"{y_min:.3f}"
                 y_max_format = f"{y_max:.3f}"
             else:
                 y_min_format = f"{y_min:.5f}"
                 y_max_format = f"{y_max:.5f}"
-                
+
             st.markdown(f"Y-axis range: {y_min_format} - {y_max_format} | Generating {projections_per_point} projections per point × {len(projection_start_points)} points = {total_projections} total projections")
 
             # Display pattern match information if available
@@ -420,15 +425,15 @@ while True:
 
     # Display latest price and clock at the bottom
     with latest_price_container:
-        col1, col2 = st.columns([1, 1])
-        with col1:
+        col1_bottom, col2_bottom = st.columns([1, 1])
+        with col1_bottom:
             st.markdown(f"<h2 style='text-align: center; color: green;'>{pair_display}: {price_format}</h2>", unsafe_allow_html=True)
-        with col2:
+        with col2_bottom:
             st.markdown(f"<h3 style='text-align: center;'>🕒 {latest_time} AEST</h3>", unsafe_allow_html=True)
 
     # Add controls for Y-axis scaling and projections at the bottom
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    col1_controls, col2_controls, col3_controls = st.columns(3)
+    with col1_controls:
         y_axis_padding = st.slider(
             "Y-Axis Padding (%)",
             min_value=1,
@@ -437,14 +442,14 @@ while True:
             help="Percentage padding above and below the main price range"
         )
 
-    with col2:
+    with col2_controls:
         clip_projections = st.checkbox(
             "Clip Extreme Projections",
             value=True,
             help="Limit projection values to a reasonable range"
         )
 
-    with col3:
+    with col3_controls:
         projections_per_point = st.slider(
             "Projections per Point",
             min_value=1,
