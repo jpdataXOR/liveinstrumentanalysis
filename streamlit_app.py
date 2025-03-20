@@ -7,14 +7,15 @@ from data_utils import get_forex_data, convert_to_aest, generate_future_projecti
 from datetime import datetime
 import numpy as np
 import uuid
+from config import stock_options
 
 # Function to generate a unique key
 def generate_unique_key(prefix):
     return f"{prefix}_{uuid.uuid4()}"
 
 # Streamlit UI
-st.set_page_config(page_title="Live Forex Prices", layout="wide", initial_sidebar_state="collapsed")
-st.title("📈 Live Forex Prices & Future Projections")
+st.set_page_config(page_title="Live Financial Instrument Analysis", layout="wide", initial_sidebar_state="collapsed")
+st.title("📈 Live Financial Instrument Analysis")
 
 # Initialize session state variables
 if "y_axis_padding" not in st.session_state:
@@ -63,13 +64,27 @@ with col4:
     countdown_placeholder = st.empty()
 
 with col1:
-    st.markdown("**💱 Forex Pair:**")
-    forex_pair = st.selectbox(
-        "Select currency pair:",
-        ["AUDUSD=X", "USDJPY=X", "AUDNZD=X", "USDCHF=X", "EURUSD=X"],
-        format_func=lambda x: x.replace("=X", ""),
+    st.markdown("**📊 Instrument:**")
+    selected_instrument = st.selectbox(
+        "Select instrument:",
+        options=list(stock_options.keys()),
         index=0
     )
+    
+    custom_symbol = st.text_input(
+        "Or enter custom Yahoo Finance symbol:",
+        placeholder="e.g. AAPL, MSFT, BTC-USD",
+        help="Enter any valid Yahoo Finance symbol. This will override the dropdown selection."
+    )
+    
+    # Determine which symbol to use
+    if custom_symbol:
+        instrument_symbol = custom_symbol
+    else:
+        instrument_symbol = stock_options[selected_instrument]
+
+# Replace existing forex_pair variable with instrument_symbol
+forex_pair = instrument_symbol  # Keep variable name for compatibility
 
 with col2:
     st.markdown("**⏳ Refresh Interval:**")
@@ -381,8 +396,9 @@ while True:
             )
 
         pair_display = forex_pair.replace("=X", "")
+        instrument_display = custom_symbol if custom_symbol else selected_instrument
         fig.update_layout(
-            title=f"Live {pair_display} Price with Future Predictions ({ohlc_interval})",
+            title=f"Live {instrument_display} Price with Future Predictions ({ohlc_interval})",
             xaxis_title="Time (AEST)",
             yaxis_title="Price",
             showlegend=True
@@ -422,7 +438,7 @@ while True:
                 st.markdown(pattern_info)
 
     # Update latest price and time
-    price_placeholder.markdown(f"<h4 style='text-align: center; color: green;'>{pair_display}: {price_format}</h4>", unsafe_allow_html=True)
+    price_placeholder.markdown(f"<h4 style='text-align: center; color: green;'>{instrument_display}: {price_format}</h4>", unsafe_allow_html=True)
     time_placeholder.markdown(f"<h5 style='text-align: center;'>🕒 {latest_time} AEST</h5>", unsafe_allow_html=True)
 
     # Update countdown timer
@@ -436,5 +452,5 @@ while True:
             price_format = f"{latest_price:.3f}"
         else:
             price_format = f"{latest_price:.5f}"
-        pair_display = forex_pair.replace("=X", "")
-        components.html(f"<script>document.title = '{pair_display}: {price_format}';</script>", height=0)
+        instrument_display = custom_symbol if custom_symbol else selected_instrument
+        components.html(f"<script>document.title = '{instrument_display}: {price_format}';</script>", height=0)
