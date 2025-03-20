@@ -8,6 +8,7 @@ from datetime import datetime
 import numpy as np
 import uuid
 from config import stock_options
+from utils.theme_utils import apply_theme, get_theme
 
 # Function to generate a unique key
 def generate_unique_key(prefix):
@@ -26,6 +27,9 @@ if "projections_per_point" not in st.session_state:
 
 if "clip_projections" not in st.session_state:
     st.session_state.clip_projections = True
+
+if "theme" not in st.session_state:
+    apply_theme("Light")  # Default theme
 
 # Sidebar controls for Y-axis scaling and projections
 with st.sidebar:
@@ -53,6 +57,14 @@ with st.sidebar:
         value=st.session_state.projections_per_point,
         help="Number of prediction lines to generate from each point",
         key="projections_per_point_slider"
+    )
+
+    st.markdown("---")
+    selected_theme = st.selectbox(
+        "Theme",
+        ["Light", "Dark"],
+        on_change=lambda: apply_theme(st.session_state.selected_theme),
+        key="selected_theme"
     )
 
 # UI Controls - Top Row
@@ -145,6 +157,19 @@ def calculate_seconds_until_refresh(refresh_rate):
     next_refresh_time = (current_time // refresh_rate + 1) * refresh_rate
     return int(next_refresh_time - current_time)
 
+def get_chart_colors():
+    theme = get_theme()
+    return {
+        'bg_color': theme['background_color'],
+        'text_color': theme['text_color'],
+        'line_color': theme['line_color'],
+        'marker_color': theme['marker_color'],
+        'projection_color': theme['projection_color'],
+        'latest_projection_color': theme['latest_projection_color'],
+        'avg_projection_color': theme['avg_projection_color'],
+        'avg_latest_projection_color': theme['avg_latest_projection_color']
+    }
+
 # Main loop
 while True:
     # Fetch latest forex data
@@ -193,6 +218,7 @@ while True:
 
     # Create chart
     with placeholder_chart.container():
+        colors = get_chart_colors()
         fig = go.Figure()
 
         if stock_data:
@@ -215,7 +241,7 @@ while True:
                 x=[convert_to_aest(item["date"]) for item in last_20_data],
                 y=[item["close"] for item in last_20_data],
                 mode="lines",
-                line=dict(shape="hv", color="black", width=2),
+                line=dict(shape="hv", color=colors['line_color'], width=2),
                 name="Price",
             ))
 
@@ -234,10 +260,10 @@ while True:
                 x=[latest_point_date],
                 y=[latest_point_price],
                 mode="markers+text",
-                marker=dict(size=10, color="black"),
+                marker=dict(size=10, color=colors['marker_color']),
                 text=[price_text],
                 textposition="top right",
-                textfont=dict(size=12, color="black"),
+                textfont=dict(size=12, color=colors['text_color']),
                 name="Latest Point",
                 showlegend=False,
             ))
@@ -301,10 +327,10 @@ while True:
                     opacity = max(0.3, opacity)  # Don't go too transparent
 
                     if is_latest_point:
-                        color = f"rgba(255,0,0,{opacity})"
+                        color = colors['latest_projection_color']
                         line_width = 2 if proj_idx == 0 else 1.5
                     else:
-                        color = f"rgba(150,150,150,{opacity})"
+                        color = colors['projection_color']
                         line_width = 1
 
                     # Format the projection label
@@ -364,7 +390,7 @@ while True:
                     x=avg_projection_x_overall,
                     y=avg_projection_y_overall,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(100,180,255,0.8)", width=2.5), # Light blue
+                    line=dict(shape="hv", dash="dot", color=colors['avg_projection_color'], width=2.5), # Light blue
                     name="Average Projection (All)",
                 ))
 
@@ -383,7 +409,7 @@ while True:
                     x=avg_latest_projection_x,
                     y=avg_latest_projection_y,
                     mode="lines",
-                    line=dict(shape="hv", dash="dot", color="rgba(0,0,180,0.8)", width=2.5), # Darker blue
+                    line=dict(shape="hv", dash="dot", color=colors['avg_latest_projection_color'], width=2.5), # Darker blue
                     name="Average Projection (Latest Point)",
                 ))
 
@@ -398,10 +424,28 @@ while True:
         pair_display = forex_pair.replace("=X", "")
         instrument_display = custom_symbol if custom_symbol else selected_instrument
         fig.update_layout(
-            title=f"Live {instrument_display} Price with Future Predictions ({ohlc_interval})",
+            title=dict(
+                text=f"Live {instrument_display} Price with Future Predictions ({ohlc_interval})",
+                font=dict(color=colors['text_color'])
+            ),
             xaxis_title="Time (AEST)",
             yaxis_title="Price",
-            showlegend=True
+            showlegend=True,
+            plot_bgcolor=colors['bg_color'],
+            paper_bgcolor=colors['bg_color'],
+            font_color=colors['text_color'],
+            xaxis=dict(
+                title="Time (AEST)",
+                color=colors['text_color'],
+                gridcolor=colors['projection_color']
+            ),
+            yaxis=dict(
+                title="Price",
+                color=colors['text_color'],
+                gridcolor=colors['projection_color'],
+                range=[y_min, y_max]
+            ),
+            margin=dict(t=10)  # Reduce top margin
         )
 
         st.plotly_chart(fig, use_container_width=True, key=f"unique_chart_key_{time.time()}")
@@ -438,8 +482,14 @@ while True:
                 st.markdown(pattern_info)
 
     # Update latest price and time
-    price_placeholder.markdown(f"<h4 style='text-align: center; color: green;'>{instrument_display}: {price_format}</h4>", unsafe_allow_html=True)
-    time_placeholder.markdown(f"<h5 style='text-align: center;'>🕒 {latest_time} AEST</h5>", unsafe_allow_html=True)
+    price_placeholder.markdown(
+        f"<h4 style='text-align: center; color: {get_theme()['text_color']};'>{instrument_display}: {price_format}</h4>",
+        unsafe_allow_html=True
+    )
+    time_placeholder.markdown(
+        f"<h5 style='text-align: center; color: {get_theme()['text_color']};'>{latest_time} AEST</h5>",
+        unsafe_allow_html=True
+    )
 
     # Update countdown timer
     for remaining in range(refresh_rate, 0, -1):
