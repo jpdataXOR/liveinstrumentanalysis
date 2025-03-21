@@ -8,7 +8,7 @@ def apply_theme(theme):
             "line_color": "#000000",
             "marker_color": "#000000",
             "projection_color": "rgba(150,150,150,0.6)",
-            "latest_projection_color": "rgba(34,139,34,0.8)",    # Forest green
+            "latest_projection_color": "rgba(255,165,0,0.8)",    # Changed to orange
             "avg_projection_color": "rgba(0,105,148,0.8)",       # Dark blue for past consensus
             "avg_latest_projection_color": "rgba(178,34,34,0.8)" # Dark red for future consensus
         }
@@ -19,7 +19,7 @@ def apply_theme(theme):
             "line_color": "#FFFFFF",
             "marker_color": "#FFFFFF",
             "projection_color": "rgba(150,150,150,0.6)",
-            "latest_projection_color": "rgba(144,238,144,0.8)",  # Light green
+            "latest_projection_color": "rgba(255,165,0,0.8)",    # Orange (same as light theme)
             "avg_projection_color": "rgba(135,206,235,0.8)",     # Light blue for past consensus
             "avg_latest_projection_color": "rgba(255,99,71,0.8)" # Light red for future consensus
         }

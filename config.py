@@ -1,13 +1,16 @@
 stock_options = {
-    "Australian Stock Exchange": "^AXJO",
-    "NASDAQ 100": "^NDX",
+    # Cryptocurrency
     "Bitcoin": "BTC-USD",
+    
+    # Major Stock Indices
+    "S&P 500 - US": "^GSPC",
+    "NASDAQ 100": "^NDX",
+    "Australian Stock Exchange": "^AXJO",
     "Nikkei 225 - Japan": "^N225",
     "Hang Seng - Hong Kong": "^HSI",
     "FTSE 100 - UK": "^FTSE",
     "DAX - Germany": "^GDAXI",
     "CAC 40 - France": "^FCHI",
-    "S&P 500 - US": "^GSPC",
     "Toronto Stock Exchange": "^GSPTSE",
     "NIFTY 50 - India": "^NSEI",
     "IBEX 35 - Spain": "^IBEX",
@@ -16,9 +19,12 @@ stock_options = {
     "Bovespa - Brazil": "^BVSP",
     "IPC - Mexico": "^MEXBOL",
     "Volatility Index (VIX)": "^VIX",
-    "USD/CHF": "USDCHF=X",
-    "USD/JPY": "USDJPY=X",
-    "AUD/USD": "AUDUSD=X",
+    "iShares Semiconductor ETF": "SOXX",
+    
+    # Forex Pairs
     "EUR/USD": "EURUSD=X",
-    "iShares Semiconductor ETF": "SOXX"
+    "GBP/USD": "GBPUSD=X",
+    "AUD/USD": "AUDUSD=X",
+    "USD/JPY": "JPY=X",
+    "USD/CHF": "USDCHF=X"
 }

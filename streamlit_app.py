@@ -117,15 +117,29 @@ with col3:
         index=3
     )
 
+    # Add lookback period selector for 1d interval
+    if ohlc_interval == "1d":
+        lookback_choice = st.radio(
+            "Lookback period:",
+            ["5y", "2y"],
+            horizontal=True,
+            index=0,  # Default to 5y
+            key="lookback_choice"
+        )
+    else:
+        lookback_choice = None
+
 # Auto-map data period based on interval
 intervals = {
     "1m": "7d",     # 1-minute data (7 days)
     "5m": "60d",    # 5-minute data (60 days)
     "15m": "60d",   # 15-minute data (60 days)
     "1h": "2y",     # 1-hour data (2 years)
-    "1d": "2y"     # 1-day data (20 years, adjust as needed)
+    "1d": "5y"      # Default to 5 years for 1d interval
 }
-lookback_period = intervals[ohlc_interval]
+
+# Set lookback period based on interval and user choice
+lookback_period = lookback_choice if (ohlc_interval == "1d" and lookback_choice) else intervals[ohlc_interval]
 
 # Initialize session state for first run tracking
 if "is_first_run" not in st.session_state:
